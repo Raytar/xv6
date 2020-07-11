@@ -28,6 +28,7 @@ main(void)
   uartinit();      // serial port
   pinit();         // process table
   tvinit();        // trap vectors
+  sysfileinit();   // sysfile
   binit();         // buffer cache
   fileinit();      // file table
   ideinit();       // disk 
@@ -113,4 +114,3 @@ pde_t entrypgdir[NPDENTRIES] = {
 // Blank page.
 //PAGEBREAK!
 // Blank page.
-
