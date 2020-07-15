@@ -145,6 +145,9 @@ vectors.S: vectors.pl
 
 ULIB = ulib.o usys.o printf.o umalloc.o
 
+libulib.a : $(ULIB)
+	ar -rcs libulib.a $(ULIB)
+
 _%: %.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
 	$(OBJDUMP) -S $@ > $*.asm
@@ -181,6 +184,17 @@ UPROGS=\
 	_usertests\
 	_wc\
 	_zombie\
+	_rust_hello\
+
+src/bindings.rs: wrapper.h
+	bindgen -o src/bindings.rs --use-core --ctypes-prefix 'cty' wrapper.h -- -fno-builtin
+
+_rust_hello: cargo
+	cp target/i386-unknown-none/debug/xv6 _rust_hello
+
+.PHONY: cargo
+cargo: libulib.a src/bindings.rs
+	cargo xbuild --target i386-unknown-none.json
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
@@ -193,6 +207,7 @@ clean:
 	initcode initcode.out kernel xv6.img fs.img kernelmemfs \
 	xv6memfs.img mkfs .gdbinit \
 	$(UPROGS)
+	cargo clean
 
 # make a printout
 FILES = $(shell grep -v '^\#' runoff.list)
