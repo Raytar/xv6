@@ -221,6 +221,71 @@ fork(void)
   return pid;
 }
 
+// Create a new thread using the same address space as p.
+// Sets up stack to return as if from system call.
+// Caller must set state of returned proc to RUNNABLE.
+int
+clone(void (*fcn)(void *, void *), void *arg1, void *arg2, void *stack)
+{
+  int i, pid;
+  struct proc *np;
+  struct proc *curproc = myproc();
+  void *old_ebp = stack;
+
+  // Allocate process.
+  if((np = allocproc()) == 0){
+    return -1;
+  }
+
+  // Inherit process state from proc.
+  np->pgdir = curproc->pgdir;
+  np->sz = curproc->sz;
+  np->parent = curproc;
+  *np->tf = *curproc->tf;
+
+  // Set up the stack.
+  // The stack should look like this:
+  //
+  // arg2
+  // arg1
+  // return address (0xffffffff)
+  // old %ebp (whatever) <- %esp and %ebp should point here
+
+  *(void **)stack = arg2;
+  stack += sizeof(void *);
+
+  *(void **)stack = arg1;
+  stack += sizeof(void *);
+
+  *(void **)stack = (void *)0xffffffff;
+  stack += sizeof(void *);
+
+  *(void **)stack = old_ebp;
+  stack += sizeof(void *);
+
+  np->tf->ebp = (uint)stack;
+  np->tf->esp = (uint)stack;
+  np->tf->eip = (uint)fcn;
+
+  // TODO(john) figure out if the open files can be copied, or should they be shared via pointer
+  for(i = 0; i < NOFILE; i++)
+    if(curproc->ofile[i])
+      np->ofile[i] = filedup(curproc->ofile[i]);
+  np->cwd = idup(curproc->cwd);
+
+  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+
+  pid = np->pid;
+
+  acquire(&ptable.lock);
+
+  np->state = RUNNABLE;
+
+  release(&ptable.lock);
+
+  return pid;
+}
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
