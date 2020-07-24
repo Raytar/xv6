@@ -252,16 +252,16 @@ clone(void (*fcn)(void *, void *), void *arg1, void *arg2, void *stack)
   // old %ebp (whatever) <- %esp and %ebp should point here
 
   *(void **)stack = arg2;
-  stack += sizeof(void *);
+  stack -= sizeof(arg2);
 
   *(void **)stack = arg1;
-  stack += sizeof(void *);
+  stack -= sizeof(arg1);
 
   *(void **)stack = (void *)0xffffffff;
-  stack += sizeof(void *);
+  stack -= sizeof(void *);
 
   *(void **)stack = old_ebp;
-  stack += sizeof(void *);
+  stack -= sizeof(old_ebp);
 
   np->tf->ebp = (uint)stack;
   np->tf->esp = (uint)stack;
